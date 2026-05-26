@@ -38,7 +38,7 @@
 <label>主密码</label>
 <div class="input-group">
 <input type="password" id="spw" placeholder="输入主密码">
-<button type="button" class="btn-icon" onclick="togVis('spw')">👁</button>
+<button type="button" class="btn-icon" onclick="togVis('spw')">🐵</button>
 </div>
 </div>
 <div class="form-group">
@@ -89,7 +89,7 @@
 <div class="lock-pw-group">
 <div class="input-group">
 <input type="password" id="lpw" placeholder="输入主密码">
-<button type="button" class="btn-icon" onclick="togVis('lpw')">👁</button>
+<button type="button" class="btn-icon" onclick="togVis('lpw')">🐵</button>
 </div>
 <button class="btn btn-primary" onclick="unlockByPw()">解锁</button>
 <p id="lpwh" class="hint" style="margin-top:10px"></p>
@@ -175,6 +175,25 @@
 </button>
 </div>
 
+<!-- 主题设置 -->
+<div class="settings-section">
+<h3 class="settings-title">🎨 主题</h3>
+<div class="theme-options">
+<div class="theme-option" data-theme="dark" onclick="setTheme('dark')">
+<div class="theme-swatch" style="background:linear-gradient(135deg,#2a2a42,#1a1a2e)"></div>
+<span class="theme-label">暗夜</span>
+</div>
+<div class="theme-option" data-theme="white" onclick="setTheme('white')">
+<div class="theme-swatch" style="background:linear-gradient(135deg,#e5e5ea,#d1d1d6)"></div>
+<span class="theme-label">纯白</span>
+</div>
+<div class="theme-option" data-theme="anime" onclick="setTheme('anime')">
+<div class="theme-swatch" style="background:linear-gradient(135deg,#e9d5ff,#c4b5fd)"></div>
+<span class="theme-label">柔雾紫</span>
+</div>
+</div>
+</div>
+
 <!-- 危险操作 -->
 <div class="settings-section">
 <h3 class="settings-title">⚠ 危险操作</h3>
@@ -203,14 +222,14 @@
 <label>当前密码</label>
 <div class="input-group">
 <input type="password" id="cpwOld" placeholder="输入当前主密码">
-<button type="button" class="btn-icon" onclick="togVis('cpwOld')">👁</button>
+<button type="button" class="btn-icon" onclick="togVis('cpwOld')">🐵</button>
 </div>
 </div>
 <div class="form-group">
 <label>新密码</label>
 <div class="input-group">
 <input type="password" id="cpwNew" placeholder="输入新密码">
-<button type="button" class="btn-icon" onclick="togVis('cpwNew')">👁</button>
+<button type="button" class="btn-icon" onclick="togVis('cpwNew')">🐵</button>
 </div>
 </div>
 <div class="form-group">
@@ -268,7 +287,7 @@
 <label>API Key *</label>
 <div class="input-group">
 <input type="password" id="mk" required placeholder="sk-...">
-<button type="button" class="btn-icon" onclick="togVis('mk')">👁</button>
+<button type="button" class="btn-icon" onclick="togVis('mk')">🐵</button>
 </div>
 </div>
 <div class="form-group">

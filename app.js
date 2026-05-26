@@ -151,7 +151,11 @@ destroy(){this.reset();window.removeEventListener('resize',this._onResize);if(th
    7. UI 工具函数
    ============================================================ */
 function toast(msg,type='success'){const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;document.getElementById('toasts').appendChild(t);requestAnimationFrame(()=>t.classList.add('show'));setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300)},2500)}
-function togVis(id){const i=document.getElementById(id);i.type=i.type==='password'?'text':'password'}
+function togVis(id){
+const i=document.getElementById(id);
+if(i.type==='password'){i.type='text';i.parentElement.querySelector('.btn-icon').textContent='🙈'}
+else{i.type='password';i.parentElement.querySelector('.btn-icon').textContent='🐵'}
+}
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function openModal(id){document.getElementById(id).classList.add('show')}
@@ -160,6 +164,9 @@ function closeModalEl(id){document.getElementById(id).classList.remove('show')}
 /* ============================================================
    8. 初始化
    ============================================================ */
+/** 页面加载时初始化主题（在 DOM 渲染前） */
+initTheme();
+
 document.addEventListener('DOMContentLoaded',()=>{
 const cfg=S.loadCfg();
 if(!cfg){showScreen('setup-screen')}
@@ -367,11 +374,30 @@ if(cfg){
 document.getElementById('gestureToggle').checked=cfg.gestureEnabled;
 document.getElementById('resetGestureBtn').style.display=cfg.gestureEnabled?'flex':'none';
 }
+const currentTheme=localStorage.getItem('vault_theme')||'dark';
+document.querySelectorAll('.theme-option').forEach(el=>{
+el.classList.toggle('active',el.dataset.theme===currentTheme);
+});
 openModal('settings-modal');
 }
 
 /** 关闭设置 */
 function closeSettings(){closeModalEl('settings-modal')}
+
+/** 设置主题 */
+function setTheme(name){
+document.documentElement.className=name==='dark'?'':'theme-'+name;
+localStorage.setItem('vault_theme',name);
+document.querySelectorAll('.theme-option').forEach(el=>{
+el.classList.toggle('active',el.dataset.theme===name);
+});
+}
+
+/** 初始化主题 */
+function initTheme(){
+const t=localStorage.getItem('vault_theme')||'dark';
+setTheme(t);
+}
 
 /** 切换手势开关 */
 async function toggleGesture(enabled){
@@ -637,7 +663,7 @@ grid.innerHTML=filtered.map(k=>`
 <div class="key-card" data-id="${k.id}">
 <div class="card-top"><span class="card-name">${esc(k.name)}</span></div>
 ${k.url?`<div class="card-url">${esc(k.url)}</div>`:''}
-<div class="card-key-row"><span class="card-key-val" id="kv-${k.id}">${maskKey(k.apiKey)}</span><div class="card-key-btns"><button onclick="togKeyVis('${k.id}')" title="显示/隐藏">👁</button><button onclick="copyKey('${k.id}')" title="复制">📋</button></div></div>
+<div class="card-key-row"><span class="card-key-val" id="kv-${k.id}">${maskKey(k.apiKey)}</span><div class="card-key-btns"><button onclick="togKeyVis('${k.id}')" title="显示/隐藏" id="eye-${k.id}">🐵</button><button onclick="copyKey('${k.id}')" title="复制" class="copy-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button></div></div>
 ${k.notes?`<div class="card-notes">${esc(k.notes)}</div>`:''}
 <div class="card-foot"><button onclick="openEdit('${k.id}')" title="编辑">✎</button><button onclick="delKey('${k.id}')" title="删除">✕</button></div>
 </div>`).join('');
@@ -645,8 +671,9 @@ ${k.notes?`<div class="card-notes">${esc(k.notes)}</div>`:''}
 
 function togKeyVis(id){
 const el=document.getElementById('kv-'+id);if(!el)return;
-if(visSet.has(id)){el.textContent=maskKey(keys.find(k=>k.id===id).apiKey);visSet.delete(id)}
-else{el.textContent=keys.find(k=>k.id===id).apiKey;visSet.add(id)}
+const icon=document.getElementById('eye-'+id);
+if(visSet.has(id)){el.textContent=maskKey(keys.find(k=>k.id===id).apiKey);visSet.delete(id);if(icon)icon.textContent='🐵'}
+else{el.textContent=keys.find(k=>k.id===id).apiKey;visSet.add(id);if(icon)icon.textContent='🙈'}
 }
 
 function copyKey(id){
@@ -720,7 +747,8 @@ toast('导出成功');
 function resetAll(){
 if(!confirm('确定要重置所有数据？\n\n这将清除所有 API Key 和设置，此操作不可撤销！'))return;
 if(!confirm('再次确认：删除所有数据并恢复初始状态？'))return;
-localStorage.removeItem(SC);localStorage.removeItem(SD);
+localStorage.removeItem(SC);localStorage.removeItem(SD);localStorage.removeItem('vault_theme');
+setTheme('dark');
 mk=null;keys=[];visSet.clear();
 setupPw='';resetVerifiedMk=null;
 if(lGL){lGL.destroy();lGL=null}
