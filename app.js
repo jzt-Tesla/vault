@@ -12,12 +12,12 @@
  *   7.  UI 工具函数
  *   8.  初始化
  *   9.  设置流程
- *   10. 锁屏流程
- *   11. 设置页面
- *   12. API Key 管理
- *   13. 导出功能
- *   14. 重置所有数据
- *   15. 启动入口
+ *   10. 免密自动解锁
+ *   11. 锁屏流程
+ *   12. 设置页面
+ *   13. API Key 管理
+ *   14. 导出功能
+ *   15. 重置所有数据
  *
  * ============================================================
  * 数据模型（vault_config）：
@@ -153,8 +153,8 @@ destroy(){this.reset();window.removeEventListener('resize',this._onResize);if(th
 function toast(msg,type='success'){const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;document.getElementById('toasts').appendChild(t);requestAnimationFrame(()=>t.classList.add('show'));setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300)},2500)}
 function togVis(id){
 const i=document.getElementById(id);
-if(i.type==='password'){i.type='text';i.parentElement.querySelector('.btn-icon').textContent='🙈'}
-else{i.type='password';i.parentElement.querySelector('.btn-icon').textContent='🐵'}
+if(i.type==='password'){i.type='text';i.parentElement.querySelector('.eye-icon').src='eye-closed.png'}
+else{i.type='password';i.parentElement.querySelector('.eye-icon').src='eye-open.jpg'}
 }
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
@@ -167,10 +167,18 @@ function closeModalEl(id){document.getElementById(id).classList.remove('show')}
 /** 页面加载时初始化主题（在 DOM 渲染前） */
 initTheme();
 
-document.addEventListener('DOMContentLoaded',()=>{
+/** 免密访问固定的派生盐（16字节） */
+const NOLOCK_SALT=new Uint8Array([86,97,117,108,116,78,111,76,111,99,107,83,97,108,116,33]);
+
+document.addEventListener('DOMContentLoaded',async()=>{
 const cfg=S.loadCfg();
-if(!cfg){showScreen('setup-screen')}
-else{showScreen('lock-screen');initLockScreen()}
+if(!cfg){showScreen('setup-screen');return}
+updateNoLockBtn(!!cfg.noLock);
+if(cfg.noLock){
+await autoUnlock(cfg);
+}else{
+showScreen('lock-screen');initLockScreen();
+}
 });
 
 /** 监测 localStorage 被清除 → 自动刷新 */
@@ -188,7 +196,7 @@ document.getElementById('lpw')?.addEventListener('keydown',e=>{if(e.key==='Enter
 function setupNext1(){
 const pw=document.getElementById('spw').value;
 const pw2=document.getElementById('spw2').value;
-if(!pw||pw.length<4){toast('密码至少4位','error');return}
+if(!pw||pw.length<4||pw.length>30){toast('密码需4-30位','error');return}
 if(pw!==pw2){toast('两次密码不一致','error');return}
 setupPw=pw;
 document.getElementById('s1').classList.remove('active');
@@ -253,7 +261,30 @@ if(setupGL){setupGL.destroy();setupGL=null}
 }
 
 /* ============================================================
-   10. 锁屏流程
+   10. 免密自动解锁
+   ============================================================ */
+
+/** 免密模式下自动解锁 */
+async function autoUnlock(cfg){
+try{
+const noLockKey=await C.derive('VaultNoLock',NOLOCK_SALT);
+const raw=await crypto.subtle.decrypt(
+{name:'AES-GCM',iv:new Uint8Array(ub64(cfg.noLockWrapped.i))},
+noLockKey,
+ub64(cfg.noLockWrapped.c)
+);
+mk=await crypto.subtle.importKey('raw',raw,{name:'AES-GCM',length:256},true,['encrypt','decrypt']);
+await loadKeys();
+showScreen('main-screen');
+renderKeys();
+}catch(e){
+showScreen('lock-screen');
+initLockScreen();
+}
+}
+
+/* ============================================================
+   11. 锁屏流程
    ============================================================ */
 
 /** 初始化锁屏：根据手势是否启用显示对应界面 */
@@ -359,6 +390,8 @@ mk=null;keys=[];visSet.clear();
 document.getElementById('kg').innerHTML='';
 document.getElementById('search').value='';
 if(lGL){lGL.reset()}
+const cfg=S.loadCfg();
+if(cfg&&cfg.noLock){autoUnlock(cfg);return}
 showScreen('lock-screen');
 initLockScreen();
 }
@@ -419,6 +452,37 @@ toast('手势已关闭');
 }
 }
 
+/** 头部按钮切换免密访问 */
+async function toggleNoLockBtn(){
+const cfg=S.loadCfg();
+if(!cfg)return;
+if(cfg.noLock){
+cfg.noLock=false;
+delete cfg.noLockWrapped;
+S.saveCfg(cfg);
+updateNoLockBtn(false);
+toast('免密访问已关闭');
+}else{
+try{
+const noLockKey=await C.derive('VaultNoLock',NOLOCK_SALT);
+const raw=await crypto.subtle.exportKey('raw',mk);
+const iv=C.genIV();
+const wrapped=await crypto.subtle.encrypt({name:'AES-GCM',iv},noLockKey,raw);
+cfg.noLock=true;
+cfg.noLockWrapped={c:b64(wrapped),i:b64(iv)};
+S.saveCfg(cfg);
+updateNoLockBtn(true);
+toast('免密访问已开启');
+}catch(e){toast('开启失败: '+e.message,'error')}
+}
+}
+
+/** 更新免密按钮视觉状态 */
+function updateNoLockBtn(active){
+const btn=document.getElementById('noLockBtn');
+if(btn)btn.classList.toggle('active',active);
+}
+
 /** 初始化手势设置（从设置页面开启） */
 function initGestureSetup(){
 const gSetupModal=document.getElementById('reset-gesture-modal');
@@ -441,20 +505,7 @@ if(p2===p){
 gl2._markSuccess();
 setTimeout(async()=>{
 try{
-const gestureSalt=C.genSalt();
-const gestureHash=await C.hash(p);
-const gKey=await C.derive(p,gestureSalt);
-const raw=await crypto.subtle.exportKey('raw',mk);
-const iv=C.genIV();
-const wrapped=await crypto.subtle.encrypt({name:'AES-GCM',iv},gKey,raw);
-
-const cfg=S.loadCfg();
-cfg.gestureEnabled=true;
-cfg.gestureHash=gestureHash;
-cfg.gestureSalt=b64(gestureSalt);
-cfg.wrappedKey={c:b64(wrapped),i:b64(iv)};
-S.saveCfg(cfg);
-
+await saveGestureConfig(p,mk);
 closeResetGesture();
 if(lGL){lGL.destroy();lGL=null}
 toast('手势已开启');
@@ -474,6 +525,23 @@ document.getElementById('rggh2').textContent='';
 });
 },400);
 });
+}
+
+/** 保存手势配置到 localStorage */
+async function saveGestureConfig(pattern,key){
+const gestureSalt=C.genSalt();
+const gestureHash=await C.hash(pattern);
+const gKey=await C.derive(pattern,gestureSalt);
+const raw=await crypto.subtle.exportKey('raw',key);
+const iv=C.genIV();
+const wrapped=await crypto.subtle.encrypt({name:'AES-GCM',iv},gKey,raw);
+
+const cfg=S.loadCfg();
+cfg.gestureEnabled=true;
+cfg.gestureHash=gestureHash;
+cfg.gestureSalt=b64(gestureSalt);
+cfg.wrappedKey={c:b64(wrapped),i:b64(iv)};
+S.saveCfg(cfg);
 }
 
 /** 打开重置手势弹窗（需验证主密码） */
@@ -520,20 +588,7 @@ if(p2===p){
 gl2._markSuccess();
 setTimeout(async()=>{
 try{
-const gestureSalt=C.genSalt();
-const gestureHash=await C.hash(p);
-const gKey=await C.derive(p,gestureSalt);
-const raw=await crypto.subtle.exportKey('raw',resetVerifiedMk);
-const iv=C.genIV();
-const wrapped=await crypto.subtle.encrypt({name:'AES-GCM',iv},gKey,raw);
-
-const cfg=S.loadCfg();
-cfg.gestureEnabled=true;
-cfg.gestureHash=gestureHash;
-cfg.gestureSalt=b64(gestureSalt);
-cfg.wrappedKey={c:b64(wrapped),i:b64(iv)};
-S.saveCfg(cfg);
-
+await saveGestureConfig(p,resetVerifiedMk);
 resetVerifiedMk=null;
 closeResetGesture();
 if(lGL){lGL.destroy();lGL=null}
@@ -576,7 +631,7 @@ const newPw=document.getElementById('cpwNew').value;
 const newPw2=document.getElementById('cpwNew2').value;
 
 if(!oldPw||!newPw){toast('请填写所有字段','error');return}
-if(newPw.length<4){toast('新密码至少4位','error');return}
+if(newPw.length<4||newPw.length>30){toast('新密码需4-30位','error');return}
 if(newPw!==newPw2){toast('两次新密码不一致','error');return}
 if(oldPw===newPw){toast('新旧密码不能相同','error');return}
 
@@ -608,14 +663,16 @@ cfg.pwSalt=b64(newKeySalt);
 cfg.keySalt=b64(newKeySalt);
 cfg.test=newTest;
 
-/* 手势包裹的是旧密钥，无法自动迁移，需关闭 */
-if(cfg.gestureEnabled){
+/* 手势和免密包裹的是旧密钥，无法自动迁移，需关闭 */
+if(cfg.gestureEnabled||cfg.noLock){
 delete cfg.gestureEnabled;
 delete cfg.gestureHash;
 delete cfg.gestureSalt;
 delete cfg.wrappedKey;
+delete cfg.noLock;
+delete cfg.noLockWrapped;
 if(lGL){lGL.destroy();lGL=null}
-toast('主密码已修改，手势已关闭，请在设置中重新开启');
+toast('主密码已修改，手势和免密已关闭，请在设置中重新开启');
 }else{
 toast('主密码已修改');
 }
@@ -661,24 +718,29 @@ if(filtered.length===0){grid.innerHTML='';empty.classList.remove('hidden');retur
 empty.classList.add('hidden');
 grid.innerHTML=filtered.map(k=>`
 <div class="key-card" data-id="${k.id}">
-<div class="card-top"><span class="card-name">${esc(k.name)}</span></div>
-${k.url?`<div class="card-url">${esc(k.url)}</div>`:''}
-<div class="card-key-row"><span class="card-key-val" id="kv-${k.id}">${maskKey(k.apiKey)}</span><div class="card-key-btns"><button onclick="togKeyVis('${k.id}')" title="显示/隐藏" id="eye-${k.id}">🐵</button><button onclick="copyKey('${k.id}')" title="复制" class="copy-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button></div></div>
 ${k.notes?`<div class="card-notes">${esc(k.notes)}</div>`:''}
-<div class="card-foot"><button onclick="openEdit('${k.id}')" title="编辑">✎</button><button onclick="delKey('${k.id}')" title="删除">✕</button></div>
+${k.url?`<div class="card-url">${esc(k.url)}</div>`:''}
+<div class="card-key-row"><span class="card-key-val" id="kv-${k.id}">${maskKey(k.apiKey)}</span><div class="card-key-btns"><button onclick="togKeyVis('${k.id}')" title="显示/隐藏" id="eye-${k.id}"><img src="eye-open.jpg" class="eye-icon" alt="显示"></button><button onclick="copyKey('${k.id}')" title="复制" class="copy-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button></div></div>
+<div class="card-foot"><span class="card-name">${esc(k.name)}</span><button onclick="openEdit('${k.id}')" title="编辑">✎</button><button onclick="delKey('${k.id}')" title="删除">✕</button></div>
 </div>`).join('');
 }
 
 function togKeyVis(id){
 const el=document.getElementById('kv-'+id);if(!el)return;
 const icon=document.getElementById('eye-'+id);
-if(visSet.has(id)){el.textContent=maskKey(keys.find(k=>k.id===id).apiKey);visSet.delete(id);if(icon)icon.textContent='🐵'}
-else{el.textContent=keys.find(k=>k.id===id).apiKey;visSet.add(id);if(icon)icon.textContent='🙈'}
+if(visSet.has(id)){el.textContent=maskKey(keys.find(k=>k.id===id).apiKey);visSet.delete(id);if(icon)icon.querySelector('.eye-icon').src='eye-open.jpg'}
+else{el.textContent=keys.find(k=>k.id===id).apiKey;visSet.add(id);if(icon)icon.querySelector('.eye-icon').src='eye-closed.png'}
 }
 
 function copyKey(id){
 const k=keys.find(x=>x.id===id);if(!k)return;
 navigator.clipboard.writeText(k.apiKey).then(()=>toast('已复制')).catch(()=>toast('复制失败','error'));
+}
+
+/** 快速选择供应商，自动填充名称和 URL */
+function pickProvider(name,url){
+document.getElementById('mn').value=name;
+document.getElementById('mu').value=url;
 }
 
 function openAdd(){
@@ -732,7 +794,9 @@ await saveAll();renderKeys();toast('已删除');
 function exportAllExcel(){
 if(typeof XLSX==='undefined'){toast('XLSX 库未加载，请检查网络','error');return}
 if(!keys.length){toast('没有可导出的数据','error');return}
-const data=keys.map(k=>({'名称':k.name,'API Key':k.apiKey,'URL':k.url||'','备注':k.notes||'','创建时间':fmtDate(k.createdAt)}));
+const data=keys.map(k=>{
+return {'名称':k.name,'API Key':k.apiKey,'URL':k.url||'','备注':k.notes||'','创建时间':fmtDate(k.createdAt)};
+});
 const ws=XLSX.utils.json_to_sheet(data);
 ws['!cols']=[{wch:20},{wch:50},{wch:30},{wch:30},{wch:20}];
 const wb=XLSX.utils.book_new();
@@ -749,6 +813,7 @@ if(!confirm('确定要重置所有数据？\n\n这将清除所有 API Key 和设
 if(!confirm('再次确认：删除所有数据并恢复初始状态？'))return;
 localStorage.removeItem(SC);localStorage.removeItem(SD);localStorage.removeItem('vault_theme');
 setTheme('dark');
+updateNoLockBtn(false);
 mk=null;keys=[];visSet.clear();
 setupPw='';resetVerifiedMk=null;
 if(lGL){lGL.destroy();lGL=null}

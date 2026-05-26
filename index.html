@@ -37,13 +37,13 @@
 <div class="form-group">
 <label>主密码</label>
 <div class="input-group">
-<input type="password" id="spw" placeholder="输入主密码">
-<button type="button" class="btn-icon" onclick="togVis('spw')">🐵</button>
+<input type="password" id="spw" placeholder="输入主密码" maxlength="30">
+<button type="button" class="btn-icon" onclick="togVis('spw')"><img src="eye-open.jpg" class="eye-icon" alt="显示"></button>
 </div>
 </div>
 <div class="form-group">
 <label>确认密码</label>
-<input type="password" id="spw2" placeholder="再次输入密码">
+<input type="password" id="spw2" placeholder="再次输入密码" maxlength="30">
 </div>
 <button class="btn btn-primary" onclick="setupNext1()">下一步</button>
 </div>
@@ -89,7 +89,7 @@
 <div class="lock-pw-group">
 <div class="input-group">
 <input type="password" id="lpw" placeholder="输入主密码">
-<button type="button" class="btn-icon" onclick="togVis('lpw')">🐵</button>
+<button type="button" class="btn-icon" onclick="togVis('lpw')"><img src="eye-open.jpg" class="eye-icon" alt="显示"></button>
 </div>
 <button class="btn btn-primary" onclick="unlockByPw()">解锁</button>
 <p id="lpwh" class="hint" style="margin-top:10px"></p>
@@ -116,6 +116,7 @@
 <div class="header-right">
 <button class="btn-sm" onclick="exportAllExcel()">📊 导出 Excel</button>
 <button class="btn-icon" onclick="openSettings()" title="设置">⚙</button>
+<button class="btn-icon" id="noLockBtn" onclick="toggleNoLockBtn()" title="免密访问">🚀</button>
 <button class="btn-icon" onclick="lockVault()" title="锁定">🔒</button>
 </div>
 </header>
@@ -222,19 +223,19 @@
 <label>当前密码</label>
 <div class="input-group">
 <input type="password" id="cpwOld" placeholder="输入当前主密码">
-<button type="button" class="btn-icon" onclick="togVis('cpwOld')">🐵</button>
+<button type="button" class="btn-icon" onclick="togVis('cpwOld')"><img src="eye-open.jpg" class="eye-icon" alt="显示"></button>
 </div>
 </div>
 <div class="form-group">
 <label>新密码</label>
 <div class="input-group">
-<input type="password" id="cpwNew" placeholder="输入新密码">
-<button type="button" class="btn-icon" onclick="togVis('cpwNew')">🐵</button>
+<input type="password" id="cpwNew" placeholder="输入新密码" maxlength="30">
+<button type="button" class="btn-icon" onclick="togVis('cpwNew')"><img src="eye-open.jpg" class="eye-icon" alt="显示"></button>
 </div>
 </div>
 <div class="form-group">
 <label>确认新密码</label>
-<input type="password" id="cpwNew2" placeholder="再次输入新密码">
+<input type="password" id="cpwNew2" placeholder="再次输入新密码" maxlength="30">
 </div>
 <div class="form-actions">
 <button class="btn btn-secondary" onclick="closeChangePw()">取消</button>
@@ -280,6 +281,20 @@
 <h2 id="mtitle">添加 API Key</h2>
 <form id="kform" onsubmit="saveKey(event)">
 <div class="form-group">
+<label>快速选择</label>
+<div class="provider-tags" id="providerTags">
+<button type="button" class="provider-tag" onclick="pickProvider('OpenAI','https://api.openai.com')">OpenAI</button>
+<button type="button" class="provider-tag" onclick="pickProvider('DeepSeek','https://api.deepseek.com')">DeepSeek</button>
+<button type="button" class="provider-tag" onclick="pickProvider('Claude','https://api.anthropic.com')">Claude</button>
+<button type="button" class="provider-tag" onclick="pickProvider('Gemini','https://generativelanguage.googleapis.com')">Gemini</button>
+<button type="button" class="provider-tag" onclick="pickProvider('Qwen','https://dashscope.aliyuncs.com')">Qwen</button>
+<button type="button" class="provider-tag" onclick="pickProvider('MiniMax','https://api.minimax.chat')">MiniMax</button>
+<button type="button" class="provider-tag" onclick="pickProvider('Xiaomi Mimo','https://api.mimo.xiaomi.com')">Xiaomi Mimo</button>
+<button type="button" class="provider-tag" onclick="pickProvider('Kimi','https://api.moonshot.cn')">Kimi</button>
+<button type="button" class="provider-tag" onclick="pickProvider('GLM','https://open.bigmodel.cn')">GLM</button>
+</div>
+</div>
+<div class="form-group">
 <label>名称 *</label>
 <input type="text" id="mn" required placeholder="例如：OpenAI">
 </div>
@@ -287,7 +302,7 @@
 <label>API Key *</label>
 <div class="input-group">
 <input type="password" id="mk" required placeholder="sk-...">
-<button type="button" class="btn-icon" onclick="togVis('mk')">🐵</button>
+<button type="button" class="btn-icon" onclick="togVis('mk')"><img src="eye-open.jpg" class="eye-icon" alt="显示"></button>
 </div>
 </div>
 <div class="form-group">
