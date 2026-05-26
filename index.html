@@ -89,8 +89,7 @@ a{color:var(--accent2);text-decoration:none;font-size:13px}a:hover{text-decorati
 .header-right{display:flex;gap:8px;align-items:center}
 
 .key-grid{flex:1;overflow-y:auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;align-content:start}
-.key-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:18px;transition:.2s;animation:fadeUp .35s ease-out both}
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.key-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:18px;transition:.2s}
 .key-card:hover{border-color:rgba(99,102,241,.35);box-shadow:0 2px 16px rgba(0,0,0,.3)}
 .card-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .card-name{font-size:15px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -281,10 +280,11 @@ this.grid=document.createElement('div');this.grid.className='gesture-grid';
 for(let i=0;i<9;i++){const d=document.createElement('div');d.className='g-dot';d.dataset.i=i;this.grid.appendChild(d);this.dots.push(d)}
 this.w.appendChild(this.grid);
 this._resize();
+this._onResize=()=>this._resize();
 this.w.addEventListener('pointerdown',this._pd.bind(this));
 this.w.addEventListener('pointermove',this._pm.bind(this));
 this.w.addEventListener('pointerup',this._pu.bind(this));
-window.addEventListener('resize',()=>this._resize())}
+window.addEventListener('resize',this._onResize)}
 _resize(){const r=this.w.getBoundingClientRect();this.cv.width=r.width;this.cv.height=r.height}
 _center(i){const wr=this.w.getBoundingClientRect(),dr=this.dots[i].getBoundingClientRect();return{x:dr.left-wr.left+dr.width/2,y:dr.top-wr.top+dr.height/2}}
 _hit(x,y){for(let i=0;i<9;i++){const c=this._center(i);if(Math.hypot(x-c.x,y-c.y)<28)return i}return-1}
@@ -297,7 +297,7 @@ _pu(e){this.drawing=false;this.ctx.clearRect(0,0,this.cv.width,this.cv.height);t
 _markError(){this.dots.forEach(d=>{if(d.classList.contains('active')){d.classList.remove('active');d.classList.add('error')}})}
 _markSuccess(){this.dots.forEach(d=>{if(d.classList.contains('active')){d.classList.remove('active');d.classList.add('success')}})}
 reset(){this.sel=[];this.dots.forEach(d=>d.classList.remove('active','error','success'));this.ctx.clearRect(0,0,this.cv.width,this.cv.height)}
-destroy(){this.reset();if(this.grid&&this.grid.parentNode)this.grid.remove()}
+destroy(){this.reset();window.removeEventListener('resize',this._onResize);if(this.grid&&this.grid.parentNode)this.grid.remove()}
 }
 
 function toast(msg,type='success'){const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;document.getElementById('toasts').appendChild(t);requestAnimationFrame(()=>t.classList.add('show'));setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300)},2500)}
@@ -355,6 +355,7 @@ S.saveCfg(cfg);S.saveData([]);
 toast('设置成功！');
 showScreen('main-screen');
 mk=key;keys=[];renderKeys();
+setupPw='';setupG='';
 if(sGL1){sGL1.destroy();sGL1=null}
 if(sGL2){sGL2.destroy();sGL2=null}
 }catch(e){toast('设置失败: '+e.message,'error')}
@@ -362,7 +363,7 @@ if(sGL2){sGL2.destroy();sGL2=null}
 
 function initLockScreen(){
 const cfg=S.loadCfg();
-if(!cfg)return;
+if(!cfg){showScreen('setup-screen');return}
 if(cfg.lockType==='gesture'){
 document.getElementById('lock-gesture').classList.remove('hidden');
 document.getElementById('lock-pw').classList.add('hidden');
@@ -375,18 +376,18 @@ document.getElementById('lock-pw').classList.remove('hidden');
 
 function initLockGesture(){
 if(lGL)return;
-lGL=new GL('lgw','lgc',async(p)=>{
+lGL=new GL('lgw','lgc',async(p,gl)=>{
 try{
 const cfg=S.loadCfg();
 const gh=await C.hash(p);
-if(gh!==cfg.gHash){lGL._markError();document.getElementById('lgh').textContent='手势错误';setTimeout(()=>{lGL.reset();document.getElementById('lgh').textContent=''},800);return}
+if(gh!==cfg.gHash){gl._markError();document.getElementById('lgh').textContent='手势错误';setTimeout(()=>{gl.reset();document.getElementById('lgh').textContent=''},800);return}
 const gKey=await C.derive(p,ub64(cfg.gSalt));
 const raw=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(ub64(cfg.wI))},gKey,ub64(cfg.wC));
 mk=await crypto.subtle.importKey('raw',raw,{name:'AES-GCM',length:256},true,['encrypt','decrypt']);
 await loadKeys();
-lGL._markSuccess();
-setTimeout(()=>{showScreen('main-screen');renderKeys();lGL.reset()},400);
-}catch(e){lGL._markError();document.getElementById('lgh').textContent='解锁失败';setTimeout(()=>{lGL.reset();document.getElementById('lgh').textContent=''},800)}
+gl._markSuccess();
+setTimeout(()=>{showScreen('main-screen');renderKeys();gl.reset()},400);
+}catch(e){gl._markError();document.getElementById('lgh').textContent='解锁失败';setTimeout(()=>{gl.reset();document.getElementById('lgh').textContent=''},800)}
 });
 }
 
@@ -431,7 +432,7 @@ const empty=document.getElementById('empty');
 if(filtered.length===0){grid.innerHTML='';empty.classList.remove('hidden');return}
 empty.classList.add('hidden');
 grid.innerHTML=filtered.map((k,i)=>`
-<div class="key-card" data-id="${k.id}" style="animation-delay:${i*0.04}s">
+<div class="key-card" data-id="${k.id}">
 <div class="card-top"><span class="card-name">${esc(k.name)}</span></div>
 ${k.url?`<div class="card-url">${esc(k.url)}</div>`:''}
 <div class="card-key-row"><span class="card-key-val" id="kv-${k.id}">${maskKey(k.apiKey)}</span><div class="card-key-btns"><button onclick="togKeyVis('${k.id}')" title="显示/隐藏">👁</button><button onclick="copyKey('${k.id}')" title="复制">📋</button></div></div>
@@ -472,18 +473,20 @@ function closeModal(){document.getElementById('kmodal').classList.remove('show')
 
 async function saveKey(e){
 e.preventDefault();
+const btn=e.target.querySelector('[type="submit"]');
+if(btn.disabled)return;btn.disabled=true;
 const name=document.getElementById('mn').value.trim();
 const ak=document.getElementById('mk').value;
 const url=document.getElementById('mu').value.trim();
 const notes=document.getElementById('mno').value.trim();
 const eid=document.getElementById('meid').value;
-if(!name||!ak){toast('名称和 Key 不能为空','error');return}
+if(!name||!ak){toast('名称和 Key 不能为空','error');btn.disabled=false;return}
 const now=Date.now();
 if(eid){
 const k=keys.find(x=>x.id===eid);
 if(k){k.name=name;k.apiKey=ak;k.url=url;k.notes=notes;k.updatedAt=now}
 }else{keys.push({id:uuid(),name,apiKey:ak,url,notes,createdAt:now,updatedAt:now})}
-await saveAll();renderKeys();closeModal();toast(eid?'已更新':'已添加');
+await saveAll();renderKeys();closeModal();toast(eid?'已更新':'已添加');btn.disabled=false;
 }
 
 async function delKey(id){
@@ -496,11 +499,13 @@ function lockVault(){
 mk=null;keys=[];visSet.clear();
 document.getElementById('kg').innerHTML='';
 document.getElementById('search').value='';
+if(lGL)lGL.reset();
 showScreen('lock-screen');
 initLockScreen();
 }
 
 function exportAllExcel(){
+if(typeof XLSX==='undefined'){toast('XLSX 库未加载，请检查网络','error');return}
 if(!keys.length){toast('没有可导出的数据','error');return}
 const data=keys.map(k=>({'名称':k.name,'API Key':k.apiKey,'URL':k.url||'','备注':k.notes||'','创建时间':fmtDate(k.createdAt)}));
 const ws=XLSX.utils.json_to_sheet(data);
@@ -550,6 +555,7 @@ const raw=await crypto.subtle.exportKey('raw',resetVerifiedKey);
 const wrapped=await crypto.subtle.encrypt({name:'AES-GCM',iv},gKey,raw);
 cfg.gSalt=b64(gSalt);cfg.gHash=gHash;cfg.wI=b64(iv);cfg.wC=b64(wrapped);cfg.lockType='gesture';
 S.saveCfg(cfg);mk=resetVerifiedKey;
+resetVerifiedKey=null;resetG='';
 await loadKeys();closeReset();
 showScreen('main-screen');renderKeys();
 if(lGL){lGL.destroy();lGL=null}
@@ -567,7 +573,12 @@ if(!confirm('确定要重置所有数据？\n\n这将清除所有 API Key 和设
 if(!confirm('再次确认：删除所有数据并恢复初始状态？'))return;
 localStorage.removeItem(SC);localStorage.removeItem(SD);
 mk=null;keys=[];visSet.clear();
+setupPw='';setupG='';resetVerifiedKey=null;resetG='';
 if(lGL){lGL.destroy();lGL=null}
+if(sGL1){sGL1.destroy();sGL1=null}
+if(sGL2){sGL2.destroy();sGL2=null}
+if(resetGL1){resetGL1.destroy();resetGL1=null}
+if(resetGL2){resetGL2.destroy();resetGL2=null}
 document.getElementById('kg').innerHTML='';
 document.getElementById('spw').value='';
 document.getElementById('spw2').value='';
@@ -581,6 +592,9 @@ const cfg=S.loadCfg();
 if(!cfg){showScreen('setup-screen')}
 else{showScreen('lock-screen');initLockScreen()}
 });
+
+let lastCfg=!!S.loadCfg();
+setInterval(()=>{const c=!!S.loadCfg();if(lastCfg&&!c)location.reload();lastCfg=c},300);
 
 document.getElementById('lpw')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();unlockByPw()}});
 </script>
