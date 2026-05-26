@@ -1,17 +1,58 @@
-*{margin:0;padding:0;box-sizing:border-box}
+/**
+ * Vault - style.css
+ * 全局样式定义
+ *
+ * 目录：
+ *   1. CSS 变量
+ *   2. 全局重置与基础样式
+ *   3. 通用组件（按钮、表单、弹窗、Toast）
+ *   4. 设置页面
+ *   5. 锁屏页面
+ *   6. 手势锁组件
+ *   7. 主页面
+ *   8. 设置弹窗组件
+ *   9. 响应式适配
+ */
+
+/* ============================================================
+   1. CSS 变量
+   ============================================================ */
 :root{
---bg:#0b0b14;--bg2:#12121f;--bg3:#1a1a2e;--bg4:#222240;
---accent:#6366f1;--accent2:#818cf8;--accent-bg:rgba(99,102,241,.12);
---text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
---border:#2a2a42;--radius:12px;--shadow:0 4px 24px rgba(0,0,0,.4);
---success:#22c55e;--error:#ef4444;
+--bg:#0b0b14;
+--bg2:#12121f;
+--bg3:#1a1a2e;
+--bg4:#222240;
+--accent:#6366f1;
+--accent2:#818cf8;
+--accent-bg:rgba(99,102,241,.12);
+--text:#e2e8f0;
+--text2:#94a3b8;
+--text3:#64748b;
+--border:#2a2a42;
+--radius:12px;
+--shadow:0 4px 24px rgba(0,0,0,.4);
+--success:#22c55e;
+--error:#ef4444;
 }
+
+/* ============================================================
+   2. 全局重置与基础样式
+   ============================================================ */
+*{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+
 .screen{display:none;position:fixed;inset:0;z-index:1;overflow-y:auto}
 .screen.active{display:flex}
+
 a{color:var(--accent2);text-decoration:none;font-size:13px}a:hover{text-decoration:underline}
 .hidden{display:none!important}
 .hint{font-size:13px;color:var(--text3);margin-top:8px;text-align:center}
+
+/* ============================================================
+   3. 通用组件
+   ============================================================ */
+
+/* --- 按钮 --- */
 .btn{padding:10px 20px;border:none;border-radius:8px;font-size:14px;cursor:pointer;transition:.2s;font-weight:500}
 .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent2)}
 .btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{background:var(--bg4)}
@@ -19,53 +60,66 @@ a{color:var(--accent2);text-decoration:none;font-size:13px}a:hover{text-decorati
 .btn-sm:hover{background:var(--accent);color:#fff}
 .btn-icon{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:4px 8px;border-radius:6px;transition:.2s}
 .btn-icon:hover{color:var(--text);background:var(--bg4)}
+
+/* --- 表单 --- */
 .form-group{margin-bottom:16px}
 .form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:500}
 .form-group input,.form-group textarea{width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none;transition:.2s;font-family:inherit}
 .form-group input:focus,.form-group textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
 .form-group textarea{resize:vertical;min-height:60px}
+
 .input-group{position:relative;display:flex;align-items:center}
 .input-group input{padding-right:40px}
 .input-group .btn-icon{position:absolute;right:4px}
+
 .form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+
+/* --- 弹窗 --- */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:.2s}
 .modal-overlay.show{opacity:1;pointer-events:auto}
 .modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px;width:90%;max-width:460px;box-shadow:var(--shadow);transform:translateY(20px);transition:.3s}
 .modal-overlay.show .modal{transform:translateY(0)}
 .modal h2{margin-bottom:20px;font-size:20px;font-weight:600}
+
+/* --- Toast 通知 --- */
 .toast-wrap{position:fixed;top:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:8px;pointer-events:none}
 .toast{padding:12px 20px;border-radius:10px;font-size:13px;font-weight:500;color:#fff;pointer-events:auto;opacity:0;transform:translateX(60px);transition:.3s;max-width:320px}
 .toast.show{opacity:1;transform:translateX(0)}
 .toast.success{background:#16a34a}.toast.error{background:#dc2626}.toast.info{background:#2563eb}
 
+/* ============================================================
+   4. 设置页面（首次使用）
+   ============================================================ */
 #setup-screen{align-items:center;justify-content:center;flex-direction:column}
 .setup-box{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:40px;width:90%;max-width:420px;box-shadow:var(--shadow);text-align:center}
 .setup-box .logo{font-size:48px;margin-bottom:12px}
 .setup-box h1{font-size:28px;font-weight:700;margin-bottom:4px}
 .setup-box .subtitle{color:var(--text2);font-size:14px;margin-bottom:28px}
+
 .setup-step{display:none;text-align:left}.setup-step.active{display:block}
 .setup-step h2{font-size:18px;margin-bottom:16px;text-align:center}
 .setup-step .btn{width:100%;margin-top:8px;padding:13px;font-size:15px;border-radius:10px}
 .setup-step .form-group input{padding:12px 14px;font-size:14px}
 .gesture-h{min-height:20px;font-size:13px;color:var(--text3);margin-top:10px;text-align:center}
-.method-cards{display:flex;gap:14px;margin-top:20px}
-.method-card{flex:1;background:var(--bg);border:2px solid var(--border);border-radius:14px;padding:24px 12px;text-align:center;cursor:pointer;transition:.2s}
-.method-card:hover{border-color:var(--accent);background:var(--accent-bg)}
-.method-card .m-icon{font-size:36px;margin-bottom:8px}
-.method-card .m-title{font-size:15px;font-weight:600;margin-bottom:4px}
-.method-card .m-desc{font-size:12px;color:var(--text3)}
 
+/* ============================================================
+   5. 锁屏页面
+   ============================================================ */
 #lock-screen{align-items:center;justify-content:center;flex-direction:column}
 .lock-box{text-align:center;width:100%;max-width:400px;padding:0 20px}
 .lock-box .lock-icon{font-size:56px;margin-bottom:16px}
 .lock-box h2{font-size:22px;margin-bottom:20px;font-weight:600}
 .lock-box .hint-wrap{min-height:24px;margin-top:12px;margin-bottom:8px}
+
 .lock-pw-group{margin-top:16px}
 .lock-pw-group .input-group{margin-bottom:14px}
 .lock-pw-group .input-group input{padding:14px 44px 14px 16px;font-size:15px;border-radius:10px}
 .lock-pw-group .input-group .btn-icon{right:8px;font-size:18px}
 .lock-pw-group .btn{width:100%;padding:13px;font-size:15px;border-radius:10px}
 
+/* ============================================================
+   6. 手势锁组件
+   ============================================================ */
 .gesture-wrap{position:relative;width:260px;height:260px;margin:0 auto;touch-action:none;cursor:pointer;user-select:none}
 .gesture-wrap canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
 .gesture-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);width:100%;height:100%;position:relative;z-index:2;padding:10px}
@@ -74,10 +128,15 @@ a{color:var(--accent2);text-decoration:none;font-size:13px}a:hover{text-decorati
 .g-dot.error{background:var(--error);border-color:#f87171;box-shadow:0 0 16px rgba(239,68,68,.5)}
 .g-dot.success{background:var(--success);border-color:#4ade80;box-shadow:0 0 16px rgba(34,197,94,.5)}
 
+/* ============================================================
+   7. 主页面
+   ============================================================ */
 #main-screen{flex-direction:column}
+
 .header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;gap:12px}
 .header h1{font-size:18px;font-weight:700;white-space:nowrap}
 .header-center{flex:1;max-width:400px}
+
 .search-box{display:flex;align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:0 12px;transition:.2s}
 .search-box:focus-within{border-color:var(--accent)}
 .search-box input{flex:1;background:none;border:none;color:var(--text);padding:8px 8px;font-size:13px;outline:none}
@@ -108,9 +167,41 @@ a{color:var(--accent2);text-decoration:none;font-size:13px}a:hover{text-decorati
 .fab{position:fixed;bottom:28px;right:28px;width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:28px;cursor:pointer;box-shadow:0 4px 16px rgba(99,102,241,.45);transition:.2s;z-index:50;display:flex;align-items:center;justify-content:center;line-height:1}
 .fab:hover{background:var(--accent2);transform:scale(1.08)}
 
+/* ============================================================
+   8. 设置弹窗组件
+   ============================================================ */
+
+/* 设置弹窗宽度 */
+.settings-modal{max-width:420px}
+
+/* 设置分区 */
+.settings-section{margin-bottom:20px}
+.settings-title{font-size:13px;color:var(--text3);font-weight:500;margin-bottom:8px;padding:0 4px}
+
+/* 设置行项目 */
+.settings-item{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;cursor:pointer;transition:.15s;margin-bottom:6px}
+.settings-item:hover{background:var(--bg4);border-color:rgba(99,102,241,.3)}
+.settings-item-left{display:flex;align-items:center;gap:10px}
+.settings-item-icon{font-size:16px}
+.settings-item-arrow{color:var(--text3);font-size:18px}
+
+/* 危险操作项 */
+.settings-item.danger{color:var(--error)}
+.settings-item.danger:hover{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.06)}
+
+/* 开关组件 */
+.toggle{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--bg4);border-radius:12px;cursor:pointer;transition:.25s;border:1px solid var(--border)}
+.toggle-slider::before{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:var(--text3);left:2px;top:2px;transition:.25s}
+.toggle input:checked+.toggle-slider{background:var(--accent);border-color:var(--accent)}
+.toggle input:checked+.toggle-slider::before{transform:translateX(20px);background:#fff}
+
+/* ============================================================
+   9. 响应式适配
+   ============================================================ */
 @media(max-width:640px){
 .header{flex-wrap:wrap;gap:8px}
 .header-center{order:3;margin:0;max-width:100%;flex-basis:100%}
 .key-grid{grid-template-columns:1fr}
-.method-cards{flex-direction:column}
 }

@@ -1,4 +1,16 @@
 <!DOCTYPE html>
+<!--
+  Vault - API Key Manager
+  本地运行的 API Key 安全管理器
+
+  文件说明：
+    index.html  — 页面结构（HTML）
+    style.css   — 样式表（CSS）
+    app.js      — 业务逻辑（JavaScript）
+
+  外部依赖：SheetJS (xlsx) — Excel 导出功能
+  使用方式：双击 index.html 即可运行
+-->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -9,125 +21,274 @@
 </head>
 <body>
 
+<!-- ============================================================
+     设置页面（首次使用）
+     流程：创建主密码 → 可选手势 → 完成
+     ============================================================ -->
 <div id="setup-screen" class="screen active">
 <div class="setup-box">
 <div class="logo">🔐</div>
 <h1>Vault</h1>
 <p class="subtitle">API Key 安全管理器</p>
 
+<!-- 步骤 1：创建主密码 -->
 <div id="s1" class="setup-step active">
 <h2>创建主密码</h2>
-<div class="form-group"><label>主密码</label><div class="input-group"><input type="password" id="spw" placeholder="输入主密码"><button type="button" class="btn-icon" onclick="togVis('spw')">👁</button></div></div>
-<div class="form-group"><label>确认密码</label><input type="password" id="spw2" placeholder="再次输入密码"></div>
+<div class="form-group">
+<label>主密码</label>
+<div class="input-group">
+<input type="password" id="spw" placeholder="输入主密码">
+<button type="button" class="btn-icon" onclick="togVis('spw')">👁</button>
+</div>
+</div>
+<div class="form-group">
+<label>确认密码</label>
+<input type="password" id="spw2" placeholder="再次输入密码">
+</div>
 <button class="btn btn-primary" onclick="setupNext1()">下一步</button>
 </div>
 
+<!-- 步骤 2：可选手势密码 -->
 <div id="s2" class="setup-step">
-<h2>选择解锁方式</h2>
-<div class="method-cards">
-<div class="method-card" onclick="chooseMethod('gesture')">
-<div class="m-icon">🖐</div>
-<div class="m-title">手势密码</div>
-<div class="m-desc">九宫格手势解锁</div>
-</div>
-<div class="method-card" onclick="chooseMethod('password')">
-<div class="m-icon">⌨</div>
-<div class="m-title">文字密码</div>
-<div class="m-desc">使用主密码解锁</div>
-</div>
-</div>
-</div>
-
-<div id="s3" class="setup-step">
-<h2>设置手势密码</h2>
-<p class="hint">请绘制手势（至少连接4个点）</p>
+<h2>设置快捷手势</h2>
+<p class="hint" style="margin-bottom:20px">手势密码可用于快速解锁，也可以稍后在设置中开启</p>
+<div class="gesture-setup-area">
+<p class="hint" style="margin-bottom:12px">请绘制手势（至少连接4个点）</p>
 <div id="sgw" class="gesture-wrap"><canvas id="sgc"></canvas></div>
 <p id="sgh" class="gesture-h"></p>
 </div>
-
-<div id="s4" class="setup-step">
-<h2>确认手势密码</h2>
-<p class="hint">请再次绘制手势</p>
-<div id="sgw2" class="gesture-wrap"><canvas id="sgc2"></canvas></div>
-<p id="sgh2" class="gesture-h"></p>
+<div style="display:flex;gap:10px;margin-top:16px">
+<button class="btn btn-secondary" style="flex:1" onclick="setupSkipGesture()">跳过</button>
+</div>
 </div>
 
 <p class="hint" style="margin-top:20px">⚠ 清除浏览器数据将导致所有数据丢失</p>
 </div>
 </div>
 
+<!-- ============================================================
+     锁屏页面（返回访问时显示）
+     默认手势解锁，可切换到主密码解锁
+     ============================================================ -->
 <div id="lock-screen" class="screen">
 <div class="lock-box">
 <div class="lock-icon">🔒</div>
+
+<!-- 手势解锁模式 -->
 <div id="lock-gesture">
 <h2>绘制手势解锁</h2>
 <div id="lgw" class="gesture-wrap"><canvas id="lgc"></canvas></div>
 <div class="hint-wrap"><p id="lgh" class="hint"></p></div>
-<a href="#" onclick="openReset();return false">忘记手势？</a>
+<a href="#" onclick="switchToPw();return false">使用主密码登录</a>
 </div>
+
+<!-- 主密码解锁模式 -->
 <div id="lock-pw" class="hidden">
-<h2>输入密码解锁</h2>
+<h2>输入主密码解锁</h2>
 <p style="color:var(--text3);font-size:13px;margin-bottom:20px">请输入主密码以访问您的 API Key</p>
 <div class="lock-pw-group">
-<div class="input-group"><input type="password" id="lpw" placeholder="输入主密码"><button type="button" class="btn-icon" onclick="togVis('lpw')">👁</button></div>
+<div class="input-group">
+<input type="password" id="lpw" placeholder="输入主密码">
+<button type="button" class="btn-icon" onclick="togVis('lpw')">👁</button>
+</div>
 <button class="btn btn-primary" onclick="unlockByPw()">解锁</button>
 <p id="lpwh" class="hint" style="margin-top:10px"></p>
 </div>
+<a href="#" onclick="switchToGesture();return false" id="backToGesture" class="hidden">返回手势解锁</a>
 </div>
-<div style="margin-top:32px"><a href="#" onclick="resetAll();return false" style="color:var(--text3);font-size:12px">⚠ 重置所有数据</a></div>
 </div>
 </div>
 
+<!-- ============================================================
+     主页面（解锁后显示）
+     ============================================================ -->
 <div id="main-screen" class="screen">
+
+<!-- 顶部导航栏 -->
 <header class="header">
 <h1>🔐 Vault</h1>
-<div class="header-center"><div class="search-box"><span class="s-icon">🔍</span><input type="text" id="search" placeholder="搜索 API Key..." oninput="renderKeys()"></div></div>
+<div class="header-center">
+<div class="search-box">
+<span class="s-icon">🔍</span>
+<input type="text" id="search" placeholder="搜索 API Key..." oninput="renderKeys()">
+</div>
+</div>
 <div class="header-right">
 <button class="btn-sm" onclick="exportAllExcel()">📊 导出 Excel</button>
+<button class="btn-icon" onclick="openSettings()" title="设置">⚙</button>
 <button class="btn-icon" onclick="lockVault()" title="锁定">🔒</button>
 </div>
 </header>
+
+<!-- API Key 卡片列表 -->
 <div id="kg" class="key-grid"></div>
-<div id="empty" class="empty"><div class="e-icon">🔑</div><h3>暂无 API Key</h3><p>点击右下角 + 按钮添加</p></div>
+
+<!-- 空状态 -->
+<div id="empty" class="empty">
+<div class="e-icon">🔑</div>
+<h3>暂无 API Key</h3>
+<p>点击右下角 + 按钮添加</p>
+</div>
+
+<!-- 浮动添加按钮 -->
 <button class="fab" onclick="openAdd()">+</button>
 </div>
 
+<!-- ============================================================
+     设置弹窗
+     ============================================================ -->
+<div id="settings-modal" class="modal-overlay">
+<div class="modal settings-modal">
+<h2>设置</h2>
+
+<!-- 安全设置 -->
+<div class="settings-section">
+<h3 class="settings-title">🔐 安全</h3>
+<button class="settings-item" onclick="openChangePw()">
+<span class="settings-item-left">
+<span class="settings-item-icon">🔑</span>
+<span>修改主密码</span>
+</span>
+<span class="settings-item-arrow">›</span>
+</button>
+</div>
+
+<!-- 手势设置 -->
+<div class="settings-section">
+<h3 class="settings-title">🖐 快捷解锁</h3>
+<div class="settings-item">
+<span class="settings-item-left">
+<span class="settings-item-icon">✋</span>
+<span>手势密码</span>
+</span>
+<label class="toggle">
+<input type="checkbox" id="gestureToggle" onchange="toggleGesture(this.checked)">
+<span class="toggle-slider"></span>
+</label>
+</div>
+<button class="settings-item" id="resetGestureBtn" onclick="openResetGesture()" style="display:none">
+<span class="settings-item-left">
+<span class="settings-item-icon">🔄</span>
+<span>重置手势</span>
+</span>
+<span class="settings-item-arrow">›</span>
+</button>
+</div>
+
+<!-- 危险操作 -->
+<div class="settings-section">
+<h3 class="settings-title">⚠ 危险操作</h3>
+<button class="settings-item danger" onclick="resetAll()">
+<span class="settings-item-left">
+<span class="settings-item-icon">🗑</span>
+<span>重置所有数据</span>
+</span>
+<span class="settings-item-arrow">›</span>
+</button>
+</div>
+
+<div class="form-actions">
+<button class="btn btn-secondary" onclick="closeSettings()">关闭</button>
+</div>
+</div>
+</div>
+
+<!-- ============================================================
+     修改主密码弹窗
+     ============================================================ -->
+<div id="change-pw-modal" class="modal-overlay">
+<div class="modal">
+<h2>修改主密码</h2>
+<div class="form-group">
+<label>当前密码</label>
+<div class="input-group">
+<input type="password" id="cpwOld" placeholder="输入当前主密码">
+<button type="button" class="btn-icon" onclick="togVis('cpwOld')">👁</button>
+</div>
+</div>
+<div class="form-group">
+<label>新密码</label>
+<div class="input-group">
+<input type="password" id="cpwNew" placeholder="输入新密码">
+<button type="button" class="btn-icon" onclick="togVis('cpwNew')">👁</button>
+</div>
+</div>
+<div class="form-group">
+<label>确认新密码</label>
+<input type="password" id="cpwNew2" placeholder="再次输入新密码">
+</div>
+<div class="form-actions">
+<button class="btn btn-secondary" onclick="closeChangePw()">取消</button>
+<button class="btn btn-primary" onclick="saveChangePw()">保存</button>
+</div>
+</div>
+</div>
+
+<!-- ============================================================
+     重置手势弹窗（需验证主密码）
+     ============================================================ -->
+<div id="reset-gesture-modal" class="modal-overlay">
+<div class="modal">
+<h2>重置手势</h2>
+<div id="rgs1">
+<p style="font-size:13px;color:var(--text2);margin-bottom:14px">请输入主密码验证身份</p>
+<div class="form-group">
+<input type="password" id="rgpw" placeholder="主密码">
+</div>
+<button class="btn btn-primary" onclick="verifyResetGesture()">验证</button>
+</div>
+<div id="rgs2" class="hidden">
+<p class="hint" style="margin-bottom:12px">请绘制新手势密码</p>
+<div id="rggw" class="gesture-wrap"><canvas id="rggc"></canvas></div>
+<p id="rggh" class="gesture-h"></p>
+</div>
+<div id="rgs3" class="hidden">
+<p class="hint" style="margin-bottom:12px">请再次绘制确认</p>
+<div id="rggw2" class="gesture-wrap"><canvas id="rggc2"></canvas></div>
+<p id="rggh2" class="gesture-h"></p>
+</div>
+<div class="form-actions" style="margin-top:16px">
+<button class="btn btn-secondary" onclick="closeResetGesture()">取消</button>
+</div>
+</div>
+</div>
+
+<!-- ============================================================
+     添加/编辑 API Key 弹窗
+     ============================================================ -->
 <div id="kmodal" class="modal-overlay">
 <div class="modal">
 <h2 id="mtitle">添加 API Key</h2>
 <form id="kform" onsubmit="saveKey(event)">
-<div class="form-group"><label>名称 *</label><input type="text" id="mn" required placeholder="例如：OpenAI"></div>
-<div class="form-group"><label>API Key *</label><div class="input-group"><input type="password" id="mk" required placeholder="sk-..."><button type="button" class="btn-icon" onclick="togVis('mk')">👁</button></div></div>
-<div class="form-group"><label>URL / 备注地址</label><input type="text" id="mu" placeholder="任意文字描述"></div>
-<div class="form-group"><label>备注</label><textarea id="mno" rows="3" placeholder="备注信息..."></textarea></div>
+<div class="form-group">
+<label>名称 *</label>
+<input type="text" id="mn" required placeholder="例如：OpenAI">
+</div>
+<div class="form-group">
+<label>API Key *</label>
+<div class="input-group">
+<input type="password" id="mk" required placeholder="sk-...">
+<button type="button" class="btn-icon" onclick="togVis('mk')">👁</button>
+</div>
+</div>
+<div class="form-group">
+<label>URL / 备注地址</label>
+<input type="text" id="mu" placeholder="任意文字描述">
+</div>
+<div class="form-group">
+<label>备注</label>
+<textarea id="mno" rows="3" placeholder="备注信息..."></textarea>
+</div>
 <input type="hidden" id="meid">
-<div class="form-actions"><button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button><button type="submit" class="btn btn-primary">保存</button></div>
+<div class="form-actions">
+<button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+<button type="submit" class="btn btn-primary">保存</button>
+</div>
 </form>
 </div>
 </div>
 
-<div id="rmodal" class="modal-overlay">
-<div class="modal">
-<h2>重置手势</h2>
-<div id="rs1">
-<p style="font-size:13px;color:var(--text2);margin-bottom:14px">请输入主密码验证身份</p>
-<div class="form-group"><input type="password" id="rpw" placeholder="主密码"></div>
-<button class="btn btn-primary" onclick="verifyResetPw()">验证</button>
-</div>
-<div id="rs2" class="hidden">
-<p class="hint" style="margin-bottom:12px">请绘制新手势密码</p>
-<div id="rgw" class="gesture-wrap"><canvas id="rgc"></canvas></div>
-<p id="rgh" class="gesture-h"></p>
-</div>
-<div id="rs3" class="hidden">
-<p class="hint" style="margin-bottom:12px">请再次绘制确认</p>
-<div id="rgw2" class="gesture-wrap"><canvas id="rgc2"></canvas></div>
-<p id="rgh2" class="gesture-h"></p>
-</div>
-<div class="form-actions" style="margin-top:16px"><button class="btn btn-secondary" onclick="closeReset()">取消</button></div>
-</div>
-</div>
-
+<!-- Toast 通知容器 -->
 <div id="toasts" class="toast-wrap"></div>
 
 <script src="app.js"></script>
