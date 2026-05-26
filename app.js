@@ -148,7 +148,7 @@ destroy(){this.reset();window.removeEventListener('resize',this._onResize);if(th
 }
 
 /* ============================================================
-   7. UI 工具函数
+   7. UI 工具的函数
    ============================================================ */
 function toast(msg,type='success'){const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;document.getElementById('toasts').appendChild(t);requestAnimationFrame(()=>t.classList.add('show'));setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300)},2500)}
 function togVis(id){
