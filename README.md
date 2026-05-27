@@ -25,18 +25,29 @@ npm run build:portable
 
 打包产物输出到 `dist/Vault.exe`。
 
+### 重新生成应用图标
+
+```bash
+node gen-icon.js
+```
+
+基于 `eye-closed.png` 生成透明 squircle 圆角图标（Google Material Design 风格），输出各尺寸到项目根目录。
+
 ## 项目结构
 
 ```
 vault/
-├── index.html       — 页面结构
-├── style.css        — 样式表
-├── app.js           — 业务逻辑
-├── main.js          — Electron 主进程
-├── package.json     — 项目配置与构建脚本
-├── eye-open.jpg     — ikun睁眼图标（密码隐藏态）
-├── eye-closed.png   — ikun闭眼图标（密码可见态）
-├── dist/            — 打包输出目录
+├── index.html            — 页面结构
+├── style.css             — 样式表
+├── app.js                — 业务逻辑
+├── main.js               — Electron 主进程
+├── package.json          — 项目配置与构建脚本
+├── eye-open.jpg          — ikun睁眼图标（密码隐藏态）
+├── eye-closed.png        — ikun闭眼图标（密码可见态）
+├── gen-icon.js           — 图标生成脚本（squircle 圆角 + 透明背景）
+├── icon-vault-md.png     — 应用图标（1024x1024，透明 squircle）
+├── icon-vault-md-*.png   — 各尺寸图标（16/32/48/64/128/256/512）
+├── dist/                 — 打包输出目录
 └── README.md
 ```
 
