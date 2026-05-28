@@ -157,6 +157,17 @@ destroy(){this.reset();window.removeEventListener('resize',this._onResize);this.
    7. UI 工具的函数
    ============================================================ */
 function toast(msg,type='success'){const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;document.getElementById('toasts').appendChild(t);requestAnimationFrame(()=>t.classList.add('show'));setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300)},2500)}
+
+/** 自定义确认对话框（替代原生 confirm，避免 Electron 中 confirm 阻塞导致焦点丢失） */
+function confirmDialog(msg){
+return new Promise(resolve=>{
+const el=document.getElementById('confirmDialog');
+document.getElementById('confirmMsg').textContent=msg;
+el.style.display='flex';
+document.getElementById('confirmYes').onclick=()=>{el.style.display='none';resolve(true)};
+document.getElementById('confirmNo').onclick=()=>{el.style.display='none';resolve(false)};
+});
+}
 function togVis(id){
 const i=document.getElementById(id);
 if(i.type==='password'){i.type='text';i.parentElement.querySelector('.eye-icon').src='eye-closed.png'}
@@ -796,7 +807,7 @@ await saveAll();renderKeys();closeModal();toast(eid?'已更新':'已添加');btn
 }
 
 async function delKey(id){
-if(!confirm('确定删除此 API Key？'))return;
+if(!await confirmDialog('确定删除此 API Key？'))return;
 keys=keys.filter(k=>k.id!==id);
 await saveAll();renderKeys();toast('已删除');
 }
@@ -826,9 +837,9 @@ if(saved)toast('导出成功');
 /* ============================================================
    14. 重置所有数据
    ============================================================ */
-function resetAll(){
-if(!confirm('确定要重置所有数据？\n\n这将清除所有 API Key 和设置，此操作不可撤销！'))return;
-if(!confirm('再次确认：删除所有数据并恢复初始状态？'))return;
+async function resetAll(){
+if(!await confirmDialog('确定要重置所有数据？\n\n这将清除所有 API Key 和设置，此操作不可撤销！'))return;
+if(!await confirmDialog('再次确认：删除所有数据并恢复初始状态？'))return;
 isResetting=true;
 monitoringActive=false;
 mk=null;keys=[];visSet.clear();

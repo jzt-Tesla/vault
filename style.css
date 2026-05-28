@@ -134,6 +134,13 @@ a{color:var(--accent2);text-decoration:none;font-size:13px}a:hover{text-decorati
 .toast.show{opacity:1;transform:translateX(0)}
 .toast.success{background:#16a34a}.toast.error{background:#dc2626}.toast.info{background:#2563eb}
 
+/* --- 自定义确认对话框 --- */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:200}
+.confirm-box{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px;width:90%;max-width:420px;box-shadow:var(--shadow);text-align:center}
+.confirm-box p{font-size:15px;line-height:1.6;margin-bottom:20px;white-space:pre-wrap}
+.confirm-btns{display:flex;gap:10px;justify-content:center}
+.confirm-btns .btn{min-width:100px}
+
 /* ============================================================
    4. 设置页面（首次使用）
    ============================================================ */
