@@ -37,17 +37,25 @@ node gen-icon.js
 
 ```
 vault/
-├── index.html            — 页面结构
-├── style.css             — 样式表
-├── app.js                — 业务逻辑
-├── main.js               — Electron 主进程
-├── package.json          — 项目配置与构建脚本
-├── eye-open.jpg          — ikun睁眼图标（密码隐藏态）
-├── eye-closed.png        — ikun闭眼图标（密码可见态）
-├── gen-icon.js           — 图标生成脚本（squircle 圆角 + 透明背景）
-├── icon-vault-md.png     — 应用图标（1024x1024，透明 squircle）
-├── icon-vault-md-*.png   — 各尺寸图标（16/32/48/64/128/256/512）
-├── dist/                 — 打包输出目录
+├── index.html              — 页面结构（HTML）
+├── style.css               — 样式表（CSS，含三套主题）
+├── app.js                  — 业务逻辑（JavaScript）
+├── main.js                 — Electron 主进程入口
+├── package.json            — 项目配置与构建脚本
+├── gen-icon.js             — 图标生成脚本（squircle 圆角 + 透明背景）
+├── eye-open.jpg            — ikun睁眼图标（密码隐藏态）
+├── eye-closed.png          — ikun闭眼图标（密码可见态）
+├── icon-vault-md.png       — 应用图标源文件（1024x1024，透明 squircle）
+├── icon-vault-md-*.png     — 各尺寸图标（16/32/48/64/128/256/512）
+├── uml/                    — PlantUML 架构图（7 张）
+│   ├── 01-class-diagram.puml       — 类图
+│   ├── 02-state-diagram.puml       — 状态机图
+│   ├── 03-sequence-setup.puml      — 首次设置时序图
+│   ├── 04-sequence-unlock.puml     — 解锁流程时序图
+│   ├── 05-sequence-keymgmt.puml    — Key 管理时序图
+│   ├── 06-component-diagram.puml   — 组件图
+│   └── 07-data-flow-diagram.puml   — 数据流图
+├── dist/                   — 打包输出目录（已忽略）
 └── README.md
 ```
 
@@ -60,14 +68,16 @@ vault/
 | 加密算法 | AES-256-GCM |
 | 密钥派生 | PBKDF2（SHA-256，100,000 次迭代） |
 | 主密码 | 唯一核心认证（4-30 位） |
-| 手势密码 | 可选快捷解锁，可随时开启/关闭/重置 |
+| 手势密码 | 3×3 九宫格，可选快捷解锁，可随时开启/关闭/重置 |
 | 免密访问 | 开启后自动解锁，无需输入密码或手势 |
+| 浏览器兼容检测 | 启动时检测 Web Crypto API，不支持则提示更换浏览器 |
+| 数据清除监测 | 定时检测 localStorage 是否被清除，自动回到设置页 |
 
 ### API Key 管理
 
 - 添加 / 编辑 / 删除
 - 实时搜索（名称、URL、备注）
-- 显示 / 隐藏 Key 值
+- 显示 / 隐藏 Key 值（脱敏显示）
 - 一键复制到剪贴板
 - 导出为 Excel（.xlsx）
 - 快速选择供应商自动填充名称和 URL
@@ -86,9 +96,17 @@ vault/
 |------|------|
 | 修改主密码 | 验证旧密码后设置新密码，所有 Key 自动重新加密 |
 | 免密访问 | 开启后打开页面直接进入，无需输入密码或手势 |
-| 手势密码 | 开启/关闭/重置手势快捷解锁 |
+| 手势密码 | 开启/关闭/重置手势快捷解锁（3×3 九宫格） |
 | 主题切换 | 暗夜 / 纯白 / 柔雾紫 |
 | 重置数据 | 双重确认后清除全部数据 |
+
+## 应用流程
+
+```
+首次使用 → 创建主密码 → 可选手势 → 进入主界面
+         ↓
+后续访问 → 手势/密码/免密解锁 → 进入主界面
+```
 
 ## 数据存储
 
@@ -104,7 +122,7 @@ vault/
 
 | 字段 | 说明 |
 |------|------|
-| `pwHash` | 主密码验证哈希（PBKDF2 + SHA-256） |
+| `pwHash` | 主密码验证哈希（SHA-256） |
 | `pwSalt` | 主密码哈希派生盐 |
 | `keySalt` | AES 密钥派生盐 |
 | `test` | AES-GCM 加密的验证值 |
@@ -115,6 +133,26 @@ vault/
 | `noLock` | 免密访问是否开启 |
 | `noLockWrapped` | 免密密钥包裹的 AES 主密钥 |
 
+## 架构设计
+
+项目包含 7 张 PlantUML 架构图，详见 [uml/](uml/) 目录：
+
+| 图表 | 说明 |
+|------|------|
+| 类图 | 系统架构、模块结构、类与数据模型 |
+| 状态机图 | 应用页面状态流转 (Setup → Lock → Main) |
+| 首次设置时序图 | 密码创建 + 手势设置流程 |
+| 解锁流程时序图 | 手势/密码/免密三种解锁方式 |
+| Key 管理时序图 | API Key CRUD + 搜索 + 导出 |
+| 组件图 | 系统组件关系与依赖 |
+| 数据流图 | 密钥层次与加密数据流 |
+
+### 渲染方式
+
+- **在线渲染**：复制 `.puml` 内容到 [PlantUML Online](https://www.plantuml.com/plantuml/uml/)
+- **VS Code**：安装 [PlantUML](https://marketplace.visualstudio.com/items?itemName=jebbs.plantuml) 插件，按 `Alt+D` 预览
+- **命令行**：`java -jar plantuml.jar uml/*.puml`（需要 Java + Graphviz）
+
 ## 安全说明
 
 - API Key 使用 AES-256-GCM 加密存储
@@ -124,6 +162,24 @@ vault/
 - 无后端、无网络请求、无数据上传
 - 清除浏览器数据将导致所有内容丢失
 - 修改主密码后手势和免密自动关闭，需重新开启
+- 重置数据后自动回到密码创建页，不会误触发页面刷新
+
+## 更新日志
+
+### v1.1 (2026-05-28)
+- 修复：重置数据后页面返回手势设置页的问题，现在正确回到密码创建页
+- 修复：重置数据时 localStorage 监测误触发页面刷新的竞态条件
+- 新增：7 张 PlantUML 架构图（uml/ 目录）
+- 新增：免密访问功能（头部按钮一键开关）
+- 新增：Google Material Design 风格应用图标
+
+### v1.0 (初始版本)
+- 基于 Web Crypto API 的本地 API Key 加密管理
+- AES-256-GCM 加密 + PBKDF2 密钥派生
+- 3×3 九宫格手势密码
+- 三套主题（暗夜 / 纯白 / 柔雾紫）
+- Electron 桌面应用支持
+- Excel 导出功能
 
 ## 外部依赖
 
@@ -132,6 +188,7 @@ vault/
 | [SheetJS (xlsx)](https://sheetjs.com/) | Excel 文件生成 |
 | [Electron](https://www.electronjs.org/) | 桌面应用框架（开发依赖） |
 | [electron-builder](https://www.electron.build/) | 应用打包工具（开发依赖） |
+| [sharp](https://sharp.pixelplumbing.com/) | 图标图像处理（开发依赖） |
 
 ## 浏览器兼容性
 
@@ -141,6 +198,8 @@ vault/
 | Edge 79+ | ✅ |
 | Firefox 57+ | ✅ |
 | Safari 11+ | ✅ |
+
+> 所有浏览器均需要支持 Web Crypto API（`crypto.subtle`）
 
 ## 开发
 
@@ -153,6 +212,9 @@ npm start
 
 # 打包 Windows 便携版
 npm run build:portable
+
+# 重新生成应用图标
+node gen-icon.js
 ```
 
 ## 许可证

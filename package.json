@@ -28,7 +28,9 @@
       "app.js",
       "eye-open.jpg",
       "eye-closed.png",
-      "package.json"
+      "package.json",
+      "node_modules/xlsx/**/*",
+      "!node_modules/sharp/**/*"
     ],
     "win": {
       "target": [
@@ -45,5 +47,8 @@
     "portable": {
       "artifactName": "Vault.exe"
     }
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
   }
 }

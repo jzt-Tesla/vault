@@ -64,6 +64,9 @@ let setupPw='';
 /** 重置手势临时变量 */
 let resetVerifiedMk=null;
 
+/** 标记是否为主动重置，防止监测定时器误触发 reload */
+let isResetting=false;
+
 /* ============================================================
    3. 工具函数
    ============================================================ */
@@ -128,9 +131,12 @@ for(let i=0;i<9;i++){const d=document.createElement('div');d.className='g-dot';d
 this.w.appendChild(this.grid);
 this._resize();
 this._onResize=()=>this._resize();
-this.w.addEventListener('pointerdown',this._pd.bind(this));
-this.w.addEventListener('pointermove',this._pm.bind(this));
-this.w.addEventListener('pointerup',this._pu.bind(this));
+this._onPd=this._pd.bind(this);
+this._onPm=this._pm.bind(this);
+this._onPu=this._pu.bind(this);
+this.w.addEventListener('pointerdown',this._onPd);
+this.w.addEventListener('pointermove',this._onPm);
+this.w.addEventListener('pointerup',this._onPu);
 window.addEventListener('resize',this._onResize)}
 _resize(){const r=this.w.getBoundingClientRect();this.cv.width=r.width;this.cv.height=r.height}
 _center(i){const wr=this.w.getBoundingClientRect(),dr=this.dots[i].getBoundingClientRect();return{x:dr.left-wr.left+dr.width/2,y:dr.top-wr.top+dr.height/2}}
@@ -144,7 +150,7 @@ _pu(e){this.drawing=false;this.ctx.clearRect(0,0,this.cv.width,this.cv.height);t
 _markError(){this.dots.forEach(d=>{if(d.classList.contains('active')){d.classList.remove('active');d.classList.add('error')}})}
 _markSuccess(){this.dots.forEach(d=>{if(d.classList.contains('active')){d.classList.remove('active');d.classList.add('success')}})}
 reset(){this.sel=[];this.dots.forEach(d=>d.classList.remove('active','error','success'));this.ctx.clearRect(0,0,this.cv.width,this.cv.height)}
-destroy(){this.reset();window.removeEventListener('resize',this._onResize);if(this.grid&&this.grid.parentNode)this.grid.remove()}
+destroy(){this.reset();window.removeEventListener('resize',this._onResize);this.w.removeEventListener('pointerdown',this._onPd);this.w.removeEventListener('pointermove',this._onPm);this.w.removeEventListener('pointerup',this._onPu);if(this.grid&&this.grid.parentNode)this.grid.remove()}
 }
 
 /* ============================================================
@@ -183,7 +189,14 @@ showScreen('lock-screen');initLockScreen();
 
 /** 监测 localStorage 被清除 → 自动刷新 */
 let lastCfg=!!S.loadCfg();
-setInterval(()=>{const c=!!S.loadCfg();if(lastCfg&&!c)location.reload();lastCfg=c},300);
+let monitoringActive=true;
+setInterval(()=>{
+if(!monitoringActive||isResetting)return;
+const c=!!S.loadCfg();
+if(lastCfg&&!c){location.reload();return}
+if(!c){monitoringActive=false}
+lastCfg=c;
+},300);
 
 /** 文字密码回车键 */
 document.getElementById('lpw')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();unlockByPw()}});
@@ -791,8 +804,9 @@ await saveAll();renderKeys();toast('已删除');
 /* ============================================================
    13. 导出功能
    ============================================================ */
-function exportAllExcel(){
-if(typeof XLSX==='undefined'){toast('XLSX 库未加载，请检查网络','error');return}
+async function exportAllExcel(){
+const XLSX=require('xlsx');
+const {ipcRenderer}=require('electron');
 if(!keys.length){toast('没有可导出的数据','error');return}
 const data=keys.map(k=>{
 return {'名称':k.name,'API Key':k.apiKey,'URL':k.url||'','备注':k.notes||'','创建时间':fmtDate(k.createdAt)};
@@ -801,8 +815,12 @@ const ws=XLSX.utils.json_to_sheet(data);
 ws['!cols']=[{wch:20},{wch:50},{wch:30},{wch:30},{wch:20}];
 const wb=XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb,ws,'API Keys');
-XLSX.writeFile(wb,'vault_export_'+Date.now()+'.xlsx');
-toast('导出成功');
+const buf=XLSX.write(wb,{bookType:'xlsx',type:'buffer'});
+const saved=await ipcRenderer.invoke('save-file-dialog',{
+defaultName:'vault_export_'+Date.now()+'.xlsx',
+data:buf.toString('base64')
+});
+if(saved)toast('导出成功');
 }
 
 /* ============================================================
@@ -811,9 +829,8 @@ toast('导出成功');
 function resetAll(){
 if(!confirm('确定要重置所有数据？\n\n这将清除所有 API Key 和设置，此操作不可撤销！'))return;
 if(!confirm('再次确认：删除所有数据并恢复初始状态？'))return;
-localStorage.removeItem(SC);localStorage.removeItem(SD);localStorage.removeItem('vault_theme');
-setTheme('dark');
-updateNoLockBtn(false);
+isResetting=true;
+monitoringActive=false;
 mk=null;keys=[];visSet.clear();
 setupPw='';resetVerifiedMk=null;
 if(lGL){lGL.destroy();lGL=null}
@@ -824,7 +841,20 @@ document.getElementById('kg').innerHTML='';
 document.getElementById('spw').value='';
 document.getElementById('spw2').value='';
 document.getElementById('lpw').value='';
-closeSettings();
+
+/* 立即移除所有 modal overlay（避免 CSS transition 拦截点击） */
+document.querySelectorAll('.modal-overlay.show').forEach(m=>m.style.display='none');
+
+localStorage.removeItem(SC);localStorage.removeItem(SD);localStorage.removeItem('vault_theme');
+setTheme('dark');
+updateNoLockBtn(false);
+lastCfg=false;
+
+/* 重置设置步骤状态，确保回到步骤 1 */
+document.getElementById('s1').classList.add('active');
+document.getElementById('s2').classList.remove('active');
+
 showScreen('setup-screen');
+setTimeout(()=>{isResetting=false;document.getElementById('spw')?.focus()},100);
 toast('已重置，所有数据已清除');
 }

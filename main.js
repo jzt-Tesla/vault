@@ -1,5 +1,6 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -16,6 +17,18 @@ function createWindow() {
 
   win.loadFile('index.html');
 }
+
+// 处理保存文件对话框
+ipcMain.handle('save-file-dialog', async (event, { defaultName, data }) => {
+  const win = BrowserWindow.getFocusedWindow();
+  const { canceled, filePath } = await dialog.showSaveDialog(win, {
+    defaultPath: defaultName,
+    filters: [{ name: 'Excel Files', extensions: ['xlsx'] }]
+  });
+  if (canceled || !filePath) return false;
+  fs.writeFileSync(filePath, Buffer.from(data, 'base64'));
+  return true;
+});
 
 app.whenReady().then(createWindow);
 
